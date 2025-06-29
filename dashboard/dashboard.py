@@ -6,7 +6,7 @@ import folium
 from streamlit_folium import st_folium
 
 st.set_page_config(
-    page_title="E‑Commerce Data Dashboard",
+    page_title="Dashboard Data E-Commerce",
     page_icon="📦",
     layout="wide"
 )
@@ -14,160 +14,159 @@ st.set_page_config(
 st.title("📦 Dashboard Analisis E‑Commerce")
 st.caption("**Proyek Analisis Data**")
 
-# Load Data
 @st.cache_data
-def load_datasets():
-    orders = pd.read_csv("dashboard/orders_dataset.csv", parse_dates=["order_purchase_timestamp"])
-    payments = pd.read_csv("dashboard/order_payments_dataset.csv")
-    reviews = pd.read_csv("dashboard/order_reviews_dataset.csv")
-    geolocation = pd.read_csv("dashboard/geolocation_dataset.csv")
-    return orders, payments, reviews, geolocation
+def muat_dataset():
+    pesanan = pd.read_csv("dashboard/orders_dataset.csv", parse_dates=["order_purchase_timestamp"])
+    pembayaran = pd.read_csv("dashboard/order_payments_dataset.csv")
+    ulasan = pd.read_csv("dashboard/order_reviews_dataset.csv")
+    lokasi = pd.read_csv("dashboard/geolocation_dataset.csv")
+    return pesanan, pembayaran, ulasan, lokasi
 
-orders, payments, reviews, geolocation = load_datasets()
+pesanan, pembayaran, ulasan, lokasi = muat_dataset()
 
-def label_seg(row):
-    if row.RFM_Score >= 12: return "Loyal Customer"
-    if row.RFM_Score >= 9: return "Active Customer"
-    if row.R_Score == 5: return "New Customers"
-    if row.RFM_Score <= 5: return "At Risk"
-    return "Need Attention"
+def tentukan_segmen(baris):
+    if baris.Skor_RFM >= 12: return "Pelanggan Loyal"
+    if baris.Skor_RFM >= 9: return "Pelanggan Aktif"
+    if baris.Skor_R == 5: return "Pelanggan Baru"
+    if baris.Skor_RFM <= 5: return "Berisiko"
+    return "Butuh Perhatian"
 
-def qcut_safe(series, q=5, reverse=False):
-    if series.nunique() == 1:
-        return pd.Series([q // 2 + 1] * len(series), index=series.index, dtype=int)
-    cats = pd.qcut(series.rank(method="first"), q=q, duplicates="drop", labels=False)
-    cats = cats.astype(int) + 1
-    if reverse:
-        cats = cats.max() - cats + 1
-    return cats
+def potong_kuantil(seri, q=5, mundur=False):
+    if seri.nunique() == 1:
+        return pd.Series([q // 2 + 1] * len(seri), index=seri.index, dtype=int)
+    hasil = pd.qcut(seri.rank(method="first"), q=q, duplicates="drop", labels=False)
+    hasil = hasil.astype(int) + 1
+    if mundur:
+        hasil = hasil.max() - hasil + 1
+    return hasil
 
-tab_overview, tab_orders, tab_reviews, tab_payments, tab_rfm, tab_geospatial = st.tabs(
-    ["Overview", "Orders", "Reviews", "Payments", "RFM Segmentation", "Geospatial"]
+tab_ringkasan, tab_pesanan, tab_ulasan, tab_pembayaran, tab_rfm, tab_peta = st.tabs(
+    ["Ringkasan", "Pesanan", "Ulasan", "Pembayaran", "Segmentasi RFM", "Peta Lokasi"]
 )
 
-# Overview
-with tab_overview:
+# TAB RINGKASAN
+with tab_ringkasan:
     st.subheader("Statistik Deskriptif Singkat")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Pesanan", f"{orders['order_id'].nunique():,}")
-    col2.metric("Total Pelanggan", f"{orders['customer_id'].nunique():,}")
-    col3.metric("Total Pembayaran", f"${payments['payment_value'].sum():,.0f}")
+    kol1, kol2, kol3 = st.columns(3)
+    kol1.metric("Total Pesanan", f"{pesanan['order_id'].nunique():,}")
+    kol2.metric("Total Pelanggan", f"{pesanan['customer_id'].nunique():,}")
+    kol3.metric("Total Pembayaran", f"${pembayaran['payment_value'].sum():,.0f}")
 
-    st.write("### Statistik Deskriptif Data Pesanan")
-    st.dataframe(orders.describe(include='all').T)
+    st.write("### Statistik Data Pesanan")
+    st.dataframe(pesanan.describe(include='all').T)
 
-    st.write("### Statistik Deskriptif Data Pembayaran")
-    st.dataframe(payments.describe(include='all').T)
+    st.write("### Statistik Data Pembayaran")
+    st.dataframe(pembayaran.describe(include='all').T)
 
-    st.write("### Statistik Deskriptif Data Ulasan")
-    st.dataframe(reviews.describe(include='all').T)
+    st.write("### Statistik Data Ulasan")
+    st.dataframe(ulasan.describe(include='all').T)
 
-# Orders
-with tab_orders:
+# TAB PESANAN
+with tab_pesanan:
     st.subheader("Jumlah Pesanan per Bulan")
-    orders['bulan_pembelian'] = orders['order_purchase_timestamp'].dt.to_period("M").astype(str)
-    order_per_month = orders.groupby('bulan_pembelian')['order_id'].count().reset_index()
+    pesanan['bulan'] = pesanan['order_purchase_timestamp'].dt.to_period("M").astype(str)
+    jumlah_pesanan = pesanan.groupby('bulan')['order_id'].count().reset_index()
 
     fig, ax = plt.subplots(figsize=(12,6))
-    sns.barplot(data=order_per_month, x='bulan_pembelian', y='order_id', ax=ax)
+    sns.barplot(data=jumlah_pesanan, x='bulan', y='order_id', ax=ax)
     ax.set_xlabel("Bulan")
     ax.set_ylabel("Jumlah Pesanan")
     ax.set_title("Jumlah Pesanan per Bulan")
     ax.tick_params(axis='x', rotation=45)
     st.pyplot(fig, use_container_width=True)
 
-# Reviews
-with tab_reviews:
-    st.subheader("Distribusi Skor Review")
+# TAB ULASAN
+with tab_ulasan:
+    st.subheader("Distribusi Skor Ulasan")
     fig1, ax1 = plt.subplots(figsize=(8,5))
-    sns.countplot(x="review_score", data=reviews, ax=ax1)
-    ax1.set_xlabel("Skor Review")
+    sns.countplot(x="review_score", data=ulasan, ax=ax1)
+    ax1.set_xlabel("Skor Ulasan")
     ax1.set_ylabel("Jumlah")
     st.pyplot(fig1, use_container_width=True)
 
-    st.subheader("Rata-rata Skor Review per Bulan")
-    orders_reviews = orders[['order_id','order_purchase_timestamp']].merge(
-        reviews[['order_id','review_score']], on='order_id', how='inner')
-    orders_reviews['bulan_pembelian'] = orders_reviews['order_purchase_timestamp'].dt.to_period('M').astype(str)
-    mean_review = orders_reviews.groupby('bulan_pembelian')['review_score'].mean().reset_index()
+    st.subheader("Rata-rata Skor Ulasan per Bulan")
+    gabungan = pesanan[['order_id','order_purchase_timestamp']].merge(
+        ulasan[['order_id','review_score']], on='order_id', how='inner')
+    gabungan['bulan'] = gabungan['order_purchase_timestamp'].dt.to_period('M').astype(str)
+    rata_rata = gabungan.groupby('bulan')['review_score'].mean().reset_index()
 
     fig2, ax2 = plt.subplots(figsize=(12,6))
-    sns.lineplot(data=mean_review, x='bulan_pembelian', y='review_score', marker='o', ax=ax2)
+    sns.lineplot(data=rata_rata, x='bulan', y='review_score', marker='o', ax=ax2)
     ax2.set_xlabel("Bulan")
-    ax2.set_ylabel("Skor Review Rata-rata")
-    ax2.set_title("Rata-rata Skor Review per Bulan")
+    ax2.set_ylabel("Skor Rata-rata")
+    ax2.set_title("Skor Ulasan Rata-rata per Bulan")
     ax2.tick_params(axis='x', rotation=45)
     st.pyplot(fig2, use_container_width=True)
 
-# Payments
-with tab_payments:
-    st.subheader("Distribusi Jenis Pembayaran")
+# TAB PEMBAYARAN
+with tab_pembayaran:
+    st.subheader("Distribusi Metode Pembayaran")
+    hitung = pembayaran['payment_type'].value_counts().reset_index(name='jumlah')
+    hitung.columns = ['metode', 'jumlah']
     fig3, ax3 = plt.subplots(figsize=(8,5))
-    counts = payments['payment_type'].value_counts().reset_index(name='count')
-    counts.columns = ['payment_type', 'count']
-    sns.barplot(data=counts, x='payment_type', y='count', ax=ax3)
-    ax3.set_xlabel("Jenis Pembayaran")
+    sns.barplot(data=hitung, x='metode', y='jumlah', ax=ax3)
+    ax3.set_xlabel("Metode Pembayaran")
     ax3.set_ylabel("Jumlah")
     ax3.tick_params(axis='x', rotation=45)
     st.pyplot(fig3, use_container_width=True)
 
-# RFM
+# TAB RFM
 with tab_rfm:
     st.subheader("Segmentasi Pelanggan (RFM)")
-    rfm_raw = orders[['order_id','customer_id','order_purchase_timestamp']]\
-        .merge(payments[['order_id','payment_value']], on='order_id', how='left')
-    snapshot_date = rfm_raw['order_purchase_timestamp'].max() + pd.Timedelta(days=1)
+    data_rfm = pesanan[['order_id','customer_id','order_purchase_timestamp']]\
+        .merge(pembayaran[['order_id','payment_value']], on='order_id', how='left')
+    tanggal_snapshot = data_rfm['order_purchase_timestamp'].max() + pd.Timedelta(days=1)
 
     rfm = (
-        rfm_raw.groupby('customer_id')
-               .agg(
-                   Recency=('order_purchase_timestamp', lambda x: (snapshot_date - x.max()).days),
-                   Frequency=('order_id', 'nunique'),
-                   Monetary=('payment_value', 'sum')
-               )
-               .reset_index()
+        data_rfm.groupby('customer_id')
+                .agg(
+                    Recency=('order_purchase_timestamp', lambda x: (tanggal_snapshot - x.max()).days),
+                    Frequency=('order_id', 'nunique'),
+                    Monetary=('payment_value', 'sum')
+                )
+                .reset_index()
     )
 
-    rfm['R_Score'] = qcut_safe(rfm['Recency'],  q=5, reverse=True)
-    rfm['F_Score'] = qcut_safe(rfm['Frequency'], q=5)
-    rfm['M_Score'] = qcut_safe(rfm['Monetary'],  q=5)
-    rfm['RFM_Score'] = rfm[['R_Score','F_Score','M_Score']].sum(axis=1)
-    rfm['Segment'] = rfm.apply(label_seg, axis=1)
+    rfm['Skor_R'] = potong_kuantil(rfm['Recency'],  q=5, mundur=True)
+    rfm['Skor_F'] = potong_kuantil(rfm['Frequency'], q=5)
+    rfm['Skor_M'] = potong_kuantil(rfm['Monetary'],  q=5)
+    rfm['Skor_RFM'] = rfm[['Skor_R','Skor_F','Skor_M']].sum(axis=1)
+    rfm['Segmen'] = rfm.apply(tentukan_segmen, axis=1)
 
-    seg_counts = (
-        rfm.groupby('Segment')
+    jumlah_segmen = (
+        rfm.groupby('Segmen')
            .size()
-           .reset_index(name='count')
-           .sort_values(by='count', ascending=False)
+           .reset_index(name='jumlah')
+           .sort_values(by='jumlah', ascending=False)
     )
 
     fig4, ax4 = plt.subplots(figsize=(8,4))
-    sns.barplot(data=seg_counts, y='Segment', x='count',
-                order=seg_counts['Segment'].tolist(), ax=ax4)
+    sns.barplot(data=jumlah_segmen, y='Segmen', x='jumlah',
+                order=jumlah_segmen['Segmen'].tolist(), ax=ax4)
     ax4.set_xlabel("Jumlah Pelanggan")
     ax4.set_ylabel("")
-    ax4.set_title("Distribusi Segmen Pelanggan (RFM)")
+    ax4.set_title("Distribusi Segmen Pelanggan")
     st.pyplot(fig4, use_container_width=True)
 
     st.write("### Tabel RFM (Top 5)")
     st.dataframe(rfm.head())
 
-# Geospatial
-with tab_geospatial:
+# TAB PETA
+with tab_peta:
     st.subheader("Peta Persebaran Lokasi Pelanggan")
 
-    lokasi_kota = geolocation.groupby("geolocation_city").agg({
+    lokasi_kota = lokasi.groupby("geolocation_city").agg({
         "geolocation_lat": "mean",
         "geolocation_lng": "mean"
     }).reset_index()
 
     peta = folium.Map(location=[-14.2350, -51.9253], zoom_start=4, tiles="CartoDB positron")
 
-    for _, row in lokasi_kota.iterrows():
+    for _, baris in lokasi_kota.iterrows():
         folium.CircleMarker(
-            location=[row["geolocation_lat"], row["geolocation_lng"]],
+            location=[baris["geolocation_lat"], baris["geolocation_lng"]],
             radius=3,
-            popup=row["geolocation_city"],
+            popup=baris["geolocation_city"],
             color="blue",
             fill=True,
             fill_color="blue",
@@ -177,10 +176,10 @@ with tab_geospatial:
     st_folium(peta, width=700, height=500)
 
     st.write("### Top‑10 Kota berdasarkan Jumlah Entri Lokasi")
-    top_kota = geolocation["geolocation_city"].value_counts().head(10)
+    top_kota = lokasi["geolocation_city"].value_counts().head(10)
     fig5, ax5 = plt.subplots(figsize=(8,4))
     sns.barplot(x=top_kota.values, y=top_kota.index, ax=ax5, color="skyblue")
-    ax5.set_title("Top‑10 Kota berdasarkan Jumlah Entri Lokasi")
+    ax5.set_title("Top‑10 Kota berdasarkan Jumlah Entri")
     ax5.set_xlabel("Jumlah Entri")
     ax5.set_ylabel("Nama Kota")
     st.pyplot(fig5, use_container_width=True)
