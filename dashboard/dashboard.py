@@ -16,10 +16,10 @@ st.caption("**Proyek Analisis Data**")
 
 @st.cache_data
 def muat_dataset():
-    pesanan = pd.read_csv("dashboard/orders_dataset.csv", parse_dates=["order_purchase_timestamp"])
-    pembayaran = pd.read_csv("dashboard/order_payments_dataset.csv")
-    ulasan = pd.read_csv("dashboard/order_reviews_dataset.csv")
-    lokasi = pd.read_csv("dashboard/geolocation_dataset.csv")
+    pesanan = pd.read_csv("orders_dataset.csv", parse_dates=["order_purchase_timestamp"])
+    pembayaran = pd.read_csv("order_payments_dataset.csv")
+    ulasan = pd.read_csv("order_reviews_dataset.csv")
+    lokasi = pd.read_csv("geolocation_dataset.csv")
     return pesanan, pembayaran, ulasan, lokasi
 
 pesanan, pembayaran, ulasan, lokasi = muat_dataset()
@@ -40,6 +40,41 @@ def potong_kuantil(seri, q=5, mundur=False):
         hasil = hasil.max() - hasil + 1
     return hasil
 
+def tampilkan_statistik(dataframe, nama=""):
+    st.markdown(f"### Statistik Data {nama}")
+
+    # Statistik numerik
+    data_numerik = dataframe.select_dtypes(include=['int64', 'float64'])
+    if not data_numerik.empty:
+        st.markdown("**Statistik Numerik**")
+        st.dataframe(data_numerik.describe().T)
+
+    # Statistik kategorikal
+    data_kategorikal = dataframe.select_dtypes(include=['object'])
+    if not data_kategorikal.empty:
+        st.markdown("**Statistik Kategorikal**")
+        hasil = []
+        for kolom in data_kategorikal.columns:
+            mode_val = data_kategorikal[kolom].mode()
+            hasil.append({
+                "Kolom": kolom,
+                "Jumlah Data": data_kategorikal[kolom].count(),
+                "Jumlah Unik": data_kategorikal[kolom].nunique(),
+                "Nilai Terbanyak": mode_val.iloc[0] if not mode_val.empty else "-"
+            })
+        df_kat = pd.DataFrame(hasil).set_index("Kolom")
+        st.dataframe(df_kat)
+
+    # Statistik waktu
+    data_tanggal = dataframe.select_dtypes(include=['datetime64[ns]'])
+    if not data_tanggal.empty:
+        st.markdown("**Statistik Kolom Waktu**")
+        df_waktu = pd.DataFrame({
+            "Tanggal Awal": data_tanggal.min(),
+            "Tanggal Akhir": data_tanggal.max()
+        }).T
+        st.dataframe(df_waktu)
+
 tab_ringkasan, tab_pesanan, tab_ulasan, tab_pembayaran, tab_rfm, tab_peta = st.tabs(
     ["Ringkasan", "Pesanan", "Ulasan", "Pembayaran", "Segmentasi RFM", "Peta Lokasi"]
 )
@@ -52,14 +87,9 @@ with tab_ringkasan:
     kol2.metric("Total Pelanggan", f"{pesanan['customer_id'].nunique():,}")
     kol3.metric("Total Pembayaran", f"${pembayaran['payment_value'].sum():,.0f}")
 
-    st.write("### Statistik Data Pesanan")
-    st.dataframe(pesanan.describe(include='all').T)
-
-    st.write("### Statistik Data Pembayaran")
-    st.dataframe(pembayaran.describe(include='all').T)
-
-    st.write("### Statistik Data Ulasan")
-    st.dataframe(ulasan.describe(include='all').T)
+    tampilkan_statistik(pesanan, nama="Pesanan")
+    tampilkan_statistik(pembayaran, nama="Pembayaran")
+    tampilkan_statistik(ulasan, nama="Ulasan")
 
 # TAB PESANAN
 with tab_pesanan:
