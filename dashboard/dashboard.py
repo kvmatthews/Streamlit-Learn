@@ -17,10 +17,10 @@ st.caption("**Proyek Analisis Data**")
 # Load Data
 @st.cache_data
 def load_datasets():
-    orders = pd.read_csv("./orders_dataset.csv", parse_dates=["order_purchase_timestamp"])
-    payments = pd.read_csv("./order_payments_dataset.csv")
-    reviews = pd.read_csv("./order_reviews_dataset.csv")
-    geolocation = pd.read_csv("./geolocation_dataset.csv")
+    orders = pd.read_csv("dashboard/orders_dataset.csv", parse_dates=["order_purchase_timestamp"])
+    payments = pd.read_csv("dashboard/order_payments_dataset.csv")
+    reviews = pd.read_csv("dashboard/order_reviews_dataset.csv")
+    geolocation = pd.read_csv("dashboard/geolocation_dataset.csv")
     return orders, payments, reviews, geolocation
 
 orders, payments, reviews, geolocation = load_datasets()
