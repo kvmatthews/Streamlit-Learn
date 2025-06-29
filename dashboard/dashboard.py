@@ -5,7 +5,6 @@ import seaborn as sns
 import folium
 from streamlit_folium import st_folium
 
-# ------------- CONFIG -----------------
 st.set_page_config(
     page_title="E‑Commerce Data Dashboard",
     page_icon="📦",
@@ -15,18 +14,17 @@ st.set_page_config(
 st.title("📦 Dashboard Analisis E‑Commerce")
 st.caption("**Proyek Analisis Data**")
 
-# ------------- DATA LOADING -----------
+# Load Data
 @st.cache_data
 def load_datasets():
-    orders = pd.read_csv("../data/orders_dataset.csv", parse_dates=["order_purchase_timestamp"])
-    payments = pd.read_csv("../data/order_payments_dataset.csv")
-    reviews = pd.read_csv("../data/order_reviews_dataset.csv")
-    geolocation = pd.read_csv("../data/geolocation_dataset.csv")
+    orders = pd.read_csv("orders_dataset.csv", parse_dates=["order_purchase_timestamp"])
+    payments = pd.read_csv("order_payments_dataset.csv")
+    reviews = pd.read_csv("order_reviews_dataset.csv")
+    geolocation = pd.read_csv("geolocation_dataset.csv")
     return orders, payments, reviews, geolocation
 
 orders, payments, reviews, geolocation = load_datasets()
 
-# --------------------------------------
 def label_seg(row):
     if row.RFM_Score >= 12: return "Loyal Customer"
     if row.RFM_Score >= 9: return "Active Customer"
@@ -43,12 +41,11 @@ def qcut_safe(series, q=5, reverse=False):
         cats = cats.max() - cats + 1
     return cats
 
-# =================================================================================
 tab_overview, tab_orders, tab_reviews, tab_payments, tab_rfm, tab_geospatial = st.tabs(
     ["Overview", "Orders", "Reviews", "Payments", "RFM Segmentation", "Geospatial"]
 )
 
-# ---------- OVERVIEW TAB --------------------------------------------------------
+# Overview
 with tab_overview:
     st.subheader("Statistik Deskriptif Singkat")
     col1, col2, col3 = st.columns(3)
@@ -65,7 +62,7 @@ with tab_overview:
     st.write("### Statistik Deskriptif Data Ulasan")
     st.dataframe(reviews.describe(include='all').T)
 
-# ---------- ORDERS TAB ----------------------------------------------------------
+# Orders
 with tab_orders:
     st.subheader("Jumlah Pesanan per Bulan")
     orders['bulan_pembelian'] = orders['order_purchase_timestamp'].dt.to_period("M").astype(str)
@@ -79,7 +76,7 @@ with tab_orders:
     ax.tick_params(axis='x', rotation=45)
     st.pyplot(fig, use_container_width=True)
 
-# ---------- REVIEWS TAB ---------------------------------------------------------
+# Reviews
 with tab_reviews:
     st.subheader("Distribusi Skor Review")
     fig1, ax1 = plt.subplots(figsize=(8,5))
@@ -102,7 +99,7 @@ with tab_reviews:
     ax2.tick_params(axis='x', rotation=45)
     st.pyplot(fig2, use_container_width=True)
 
-# ---------- PAYMENTS TAB --------------------------------------------------------
+# Payments
 with tab_payments:
     st.subheader("Distribusi Jenis Pembayaran")
     fig3, ax3 = plt.subplots(figsize=(8,5))
@@ -114,7 +111,7 @@ with tab_payments:
     ax3.tick_params(axis='x', rotation=45)
     st.pyplot(fig3, use_container_width=True)
 
-# ---------- RFM TAB -------------------------------------------------------------
+# RFM
 with tab_rfm:
     st.subheader("Segmentasi Pelanggan (RFM)")
     rfm_raw = orders[['order_id','customer_id','order_purchase_timestamp']]\
@@ -155,7 +152,7 @@ with tab_rfm:
     st.write("### Tabel RFM (Top 5)")
     st.dataframe(rfm.head())
 
-# ---------- GEOSPATIAL TAB ------------------------------------------------------
+# Geospatial
 with tab_geospatial:
     st.subheader("Peta Persebaran Lokasi Pelanggan")
 
