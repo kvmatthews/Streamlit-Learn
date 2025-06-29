@@ -16,10 +16,10 @@ st.caption("**Proyek Analisis Data**")
 
 @st.cache_data
 def muat_dataset():
-    pesanan = pd.read_csv("orders_dataset.csv", parse_dates=["order_purchase_timestamp"])
-    pembayaran = pd.read_csv("order_payments_dataset.csv")
-    ulasan = pd.read_csv("order_reviews_dataset.csv")
-    lokasi = pd.read_csv("geolocation_dataset.csv")
+    pesanan = pd.read_csv("dashboard/orders_dataset.csv", parse_dates=["order_purchase_timestamp"])
+    pembayaran = pd.read_csv("dashboard/order_payments_dataset.csv")
+    ulasan = pd.read_csv("dashboard/order_reviews_dataset.csv")
+    lokasi = pd.read_csv("dashboard/geolocation_dataset.csv")
     return pesanan, pembayaran, ulasan, lokasi
 
 pesanan, pembayaran, ulasan, lokasi = muat_dataset()
